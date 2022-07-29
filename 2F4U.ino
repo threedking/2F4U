@@ -1,14 +1,17 @@
+#include <SoftwareSerial.h>
 #include <GameBoy.h>
 #include "Display.h"
 #include "TetrisCar.h"
 #include "Markup.h"
 #include "Camera.h"
 
+SoftwareSerial blue_tooth(4, 3);
+
 GameBoy gb;
 Display16x8* gb_display;
 
 TetrisCar* player_car;
-const int cars_amount{3};
+const int cars_amount{2};
 TetrisCar* cars[cars_amount]{};
 Markup* markup;
 Camera* camera;
@@ -19,6 +22,7 @@ unsigned long world_y{-1};
 
 void setup() {
   Serial.begin(9600);
+  blue_tooth.begin(9600);
   randomSeed(analogRead(A0));
   player_car = new TetrisCar(13, 0, true, true);
   gb_display = new Display16x8(&gb);
@@ -27,7 +31,7 @@ void setup() {
   cars[0] = player_car;
   for(int i = 1; i < cars_amount; i++){
     int new_x = FindFreeXPlaceOtherwiseMinus1();
-    cars[i] = new TetrisCar(new_x != -1 ? new_x : 1, world_y - 16, new_x >= 9, false);
+    cars[i] = new TetrisCar(new_x != -1 ? new_x : 1, world_y - 16, new_x >= 9, false );
   }
 }
 
@@ -36,8 +40,8 @@ void loop() {
   last_time = now;
   now = millis();
 
-  ApplyButtons();
-    
+  ApplyControl();
+
   for(auto &car : cars){
     car->Tick(now);
     if(CheckCarIsLeaveDisplay(car)){
@@ -48,7 +52,7 @@ void loop() {
         continue;
       }
      
-      if(car->HasCollisionWith(checking_car, GetPlayerY())){
+      if( car->IsAlive() && checking_car->IsAlive() && car->HasCollisionWith(checking_car, GetPlayerY())){
         car->Kill();
         checking_car->Kill();
       }
@@ -102,12 +106,6 @@ void Draw(unsigned long now){
   }
 }
 
-void ApplyButtons(){
-  int key = gb.getKey();
-  player_car->SetSterlingWheel( key == 4 ? -1.0f : key == 5 ? 1.0f : 0.0f );
-  player_car->SetGasPedal( key == 1 ? 1.0f : 0.0f );
-}
-
 void DrawPixelOnDisplay16x8(int x, int y, bool is_on){
   gb_display->SetPixel(x , y, is_on);
 }
@@ -153,8 +151,47 @@ void StartNewGame(){
   player_car->Restore(13, 0, true);
   for(int i = 1; i < cars_amount; i++){
     int new_x = FindFreeXPlaceOtherwiseMinus1();
-    cars[i]->Restore(new_x != -1 ? new_x : 1, world_y - 16, random(2));
+    cars[i]->Restore(new_x != -1 ? new_x : 1, world_y - 16, new_x >= 9);
   }
   gb_display->Clear();
   markup->ResetTimer(millis());
 }
+
+void ApplyButtons(){
+  int key = gb.getKey();
+  player_car->SetSterlingWheel( key == 4 ? -1.0f : key == 5 ? 1.0f : 0.0f );
+  player_car->SetGasPedal( key == 1 ? 1.0f : 0.0f );
+  player_car->SetBrakePedal( key == 2 ? 1.0f : 0.0f );  
+}
+
+void ApplyBluetooth(){
+  struct InputData{
+    char control{' '};
+    int force{};
+  };
+  InputData input_data{};
+    
+  if(blue_tooth.available()){
+    input_data.control = blue_tooth.read();
+    Serial.print(String("Blue: ")+String(input_data.control));
+    if(input_data.control == 'G' || input_data.control == 'B' || input_data.control == 'T'){
+      input_data.force = blue_tooth.parseInt();
+      input_data.force = constrain( input_data.force, input_data.control == 'T' ? -100 : 0 , 100 );
+      Serial.print(input_data.force);
+      if(input_data.control == 'G'){
+        player_car->SetGasPedal( static_cast<float>(input_data.force) / 100 );
+      }else if(input_data.control == 'B'){
+        player_car->SetBrakePedal( static_cast<float>(input_data.force) / 100 );
+      }else if(input_data.control == 'T'){
+        player_car->SetSterlingWheel( static_cast<float>(input_data.force) / 100 );
+      }
+    }
+  }
+}
+
+void ApplyControl(){
+  ApplyButtons();
+  ApplyBluetooth();
+}
+
+  

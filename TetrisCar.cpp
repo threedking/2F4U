@@ -52,21 +52,20 @@ bool TetrisCar::HasCollisionWith(TetrisCar* checking_car, int player_y){
 }
 
 void TetrisCar::CalcAndApplySpeed(){
-
   if(!this->freeze_y_){
     this->y_+= direction_up_ ? -1.0f : 1.0f;
   }
 
-  this->speed_ = this->freeze_y_ ? this->gas_pedal_ > 0.5f ? 250 : 125 : 50;
+  this->speed_ = this->freeze_y_ ? (this->gas_pedal_ * (250 - 125) + 125) - (this->brake_pedal_ * (125 - 20)) : 50;
+}
 
+bool TetrisCar::IsExceededDistance(){
   float abs_difference = this->y_ - this->y_start_;
   abs_difference *= abs_difference < - 1E-5 ? -1 : 1;
   
-  if( abs_difference > distance_y_max_ + 1E-5 ){
-    //this->y_ = this->y_start_;
-    this->alive_ = false;
-  }
+  return abs_difference > distance_y_max_ + 1E-5;
 }
+
 float TetrisCar::GetSpeed(){
   return this->speed_ > 1E-5 ? this->speed_ < this->max_speed_ - 1E-5 ? this->speed_ : this->max_speed_ : 0.0f;
 }
@@ -137,5 +136,10 @@ void TetrisCar::SetSterlingWheel(float new_sterling_wheel){
 void TetrisCar::SetGasPedal(float new_gas_pedal){
   if(new_gas_pedal > 0 - 1E-5 && new_gas_pedal < 1 + 1E-5){
     this->gas_pedal_ = new_gas_pedal;
+  }
+}
+void TetrisCar::SetBrakePedal(float new_brake_pedal){
+  if(new_brake_pedal > 0 - 1E-5 && new_brake_pedal < 1 + 1E-5){
+    this->brake_pedal_ = new_brake_pedal;
   }
 }

@@ -58,6 +58,7 @@ public:
   float GetSpeed();
   float GetMappedSpeed(float range_min, float range_max);
   float GetMappedTickDelayFromSpeed(float range_min, float range_max);
+  bool TetrisCar::IsExceededDistance();
 
   void Draw(void (*DrawFunction)(int, int, bool));
   bool GetIsSpriteOnIJ(int i, int j);
@@ -71,6 +72,7 @@ public:
 
   void SetSterlingWheel(float new_sterling_wheel);
   void SetGasPedal(float new_gas_pedal);
+  void SetBrakePedal(float new_brake_pedal);
 
   void SetLimitsX(int new_limit_min, int new_limit_max);
 };
